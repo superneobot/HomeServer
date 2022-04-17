@@ -272,12 +272,14 @@ namespace HomeServer
             {
                 time.Text = "00:00:00";
                 elapsed.Text = "00:00:00";
+                goto_stream.Enabled = true;
             }));
         }
 
         private void Media_Playing(object sender, VlcMediaPlayerPlayingEventArgs e)
         {
             status = Status.Play;
+            Invoke(new Action(() => { goto_stream.Enabled = false; }));
         }
 
         private void Media_Opening(object sender, VlcMediaPlayerOpeningEventArgs e)
@@ -702,6 +704,7 @@ namespace HomeServer
                 get_film_poster_url.Text = items[index].img_url;
                 poster_img.ImageLocation = items[index].img_url;
                 film_path.Text = items[index].path;
+                if(status != Status.Play)
                 goto_stream.Enabled = true;
             }
         }

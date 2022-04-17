@@ -762,13 +762,13 @@
             this.poster_img_menu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.find});
             this.poster_img_menu.Name = "poster_img_menu";
-            this.poster_img_menu.Size = new System.Drawing.Size(96, 26);
+            this.poster_img_menu.Size = new System.Drawing.Size(218, 26);
             // 
             // find
             // 
             this.find.Name = "find";
-            this.find.Size = new System.Drawing.Size(95, 22);
-            this.find.Text = "find";
+            this.find.Size = new System.Drawing.Size(217, 22);
+            this.find.Text = "Найти постер в интернете";
             this.find.Click += new System.EventHandler(this.find_Click);
             // 
             // load_list
