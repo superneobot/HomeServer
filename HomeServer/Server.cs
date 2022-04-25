@@ -1,24 +1,28 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using File = System.IO.File;
+using HomeServer;
 
-namespace HomeServer
+namespace LocalServer
 {
-    public class HomeServer
+    public class WebServer
     {
         public bool running = false; //Запущено ли?
 
         private int timeout = 8; // Лиммт времени на приём данных.
         private Encoding charEncoder = Encoding.UTF8; // Кодировка
-        private Socket serverSocket; // Нащ сокет
+        private Socket serverSocket; // Наш сокет
         private string contentPath; // Корневая папка для контента
+        public string requestCommand = "";
+        public bool ready = false;
+        public string file;
 
         // Поодерживаемый контент нашим сервером
         // Вы можете добавить больше
-        // Смотреть здесь: http://www.webmaster-toolkit.com/mime-types.shtml
         private Dictionary<string, string> extensions = new Dictionary<string, string>()
 { 
     //{ "extension", "content type" }
@@ -33,9 +37,11 @@ namespace HomeServer
     { "jpeg", "image/jpeg" },
     { "zip", "application/zip" },
     { "mkv", "video/mp4" },
-            {"mp4", "video/mp4" },
-            {"avi", "video/mp4" },
-            {"php", "text/html" }
+    { "mp4", "video/mp4" },
+    { "avi", "video/mp4" },
+    { "?=", "text/plain" },
+    { "js", "text/javascript" },
+    { "json", "text/json" }
 };
 
         public bool start(IPAddress ipAddress, int port, int maxNOfCon, string contentPath)
@@ -50,6 +56,9 @@ namespace HomeServer
                 serverSocket.Listen(maxNOfCon);
                 serverSocket.ReceiveTimeout = timeout;
                 serverSocket.SendTimeout = timeout;
+                //serverSocket.EnableBroadcast = true;
+                //serverSocket.MulticastLoopback = true;
+                serverSocket.SendBufferSize = 65000;
                 running = true;
                 this.contentPath = contentPath;
             }
@@ -96,11 +105,18 @@ namespace HomeServer
             }
         }
 
+        public string SendKino()
+        {
+            return file;
+        }
+
         private void handleTheRequest(Socket clientSocket)
         {
-            byte[] buffer = new byte[10240]; // 10 kb, just in case
+            byte[] buffer = new byte[1024]; // 10 kb, just in case
             int receivedBCount = clientSocket.Receive(buffer); // Получаем запрос
             string strReceived = charEncoder.GetString(buffer, 0, receivedBCount);
+
+            //var command = clientSocket.Receive(buffer, 0, SocketFlags.OutOfBand);
 
             // Парсим запрос
             string httpMethod = strReceived.Substring(0, strReceived.IndexOf(" "));
@@ -109,9 +125,18 @@ namespace HomeServer
             int length = strReceived.LastIndexOf("HTTP") - start - 1;
             string requestedUrl = strReceived.Substring(start, length);
 
+            if (requestedUrl.Contains("watch"))
+            {
+                requestCommand = requestedUrl;
+                ready = true;
+            }
+
+            //requestCommand = strReceived;
+
             string requestedFile;
             if (httpMethod.Equals("GET") || httpMethod.Equals("POST"))
                 requestedFile = requestedUrl.Split('?')[0];
+
             else // Вы можете реализовать другие методы
             {
                 notImplemented(clientSocket);
@@ -120,16 +145,21 @@ namespace HomeServer
 
             requestedFile = requestedFile.Replace("/", "\\").Replace("\\..", ""); // Not to go back
             start = requestedFile.LastIndexOf('.') + 1;
+
             if (start > 0)
             {
+
                 length = requestedFile.Length - start;
                 string extension = requestedFile.Substring(start, length);
+                //string command = requestedFile;
                 if (extensions.ContainsKey(extension)) // Мы поддерживаем это расширение?
                     if (File.Exists(contentPath + requestedFile)) // Если да
                                                                   // ТО отсылаем запрашиваемы контент:
                         sendOkResponse(clientSocket, File.ReadAllBytes(contentPath + requestedFile), extensions[extension]);
+
                     else
                         notFound(clientSocket); // Мы не поддерживаем данный контент.
+
             }
             else
             {
@@ -149,7 +179,7 @@ namespace HomeServer
         private void notImplemented(Socket clientSocket)
         {
 
-            sendResponse(clientSocket, "<html><head><meta http-equiv =\"Content-Type\" content=\"text/html;charset=utf-8\"></head><body><h2>Atasoy Simple Web Server</ h2 >< div > 501 - Method Not Implemented </ div ></ body ></ html > ",
+            sendResponse(clientSocket, "<html><head><meta http-equiv =\"Content-Type\" content=\"text/html;charset=utf-8\"></head><body><h2>HOMELAN Web Server</ h2 >< div > 501 - Method Not Implemented </ div ></ body ></ html > ",
                 "501 Not Implemented", "text/html");
 
         }
@@ -157,13 +187,16 @@ namespace HomeServer
         private void notFound(Socket clientSocket)
         {
 
-            sendResponse(clientSocket, "<html><head><meta http - equiv =\"Content-Type\" content=\"text/html;charset = utf - 8\"></head><body><h2>Atasoy Simple Web Server </ h2 >< div > 404 - Not Found </ div ></ body ></ html > ",
+            sendResponse(clientSocket, "<html><head><meta http - equiv =\"Content-Type\" content=\"text/html;charset = utf - 8\"></head><body><h2>HOMELAN Web Server </ h2 >< div > 404 - Not Found </ div ></ body ></ html > ",
                 "404 Not Found", "text/html");
         }
 
         private void sendOkResponse(Socket clientSocket, byte[] bContent, string contentType)
         {
+
             sendResponse(clientSocket, bContent, "200 OK", contentType);
+            ready = false;
+            //requestCommand = null;
         }
 
         // For strings
@@ -172,6 +205,8 @@ namespace HomeServer
         {
             byte[] bContent = charEncoder.GetBytes(strContent);
             sendResponse(clientSocket, bContent, responseCode, contentType);
+            //ready = false;
+            //requestCommand = null;
         }
 
         // For byte arrays
@@ -182,13 +217,16 @@ namespace HomeServer
             {
                 byte[] bHeader = charEncoder.GetBytes(
                                     "HTTP/1.1 " + responseCode + "\r\n"
-                                  + "Server: Atasoy Simple Web Server\r\n"
+                                  + "Server: HOMELAN Web Server\r\n"
                                   + "Content-Length: " + bContent.Length.ToString() + "\r\n"
                                   + "Connection: close\r\n"
                                   + "Content-Type: " + contentType + "\r\n\r\n");
                 clientSocket.Send(bHeader);
                 clientSocket.Send(bContent);
+                clientSocket.EnableBroadcast = true;
                 clientSocket.Close();
+                //ready = false;
+                //requestCommand = null;
             }
             catch { }
         }

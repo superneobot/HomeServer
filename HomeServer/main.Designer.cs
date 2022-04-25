@@ -34,6 +34,7 @@
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.web_server_status = new System.Windows.Forms.ToolStripStatusLabel();
             this.mc_status = new System.Windows.Forms.ToolStripStatusLabel();
+            this.req_state = new System.Windows.Forms.ToolStripStatusLabel();
             this.table = new System.Windows.Forms.TabControl();
             this.stream_page = new System.Windows.Forms.TabPage();
             this.progress = new MyProgressBar.MyProgressBar();
@@ -74,25 +75,35 @@
             this.ip2 = new System.Windows.Forms.NumericUpDown();
             this.ip1 = new System.Windows.Forms.NumericUpDown();
             this.start = new System.Windows.Forms.Button();
-            this.pl_timer = new System.Windows.Forms.Timer(this.components);
             this.mc_page = new System.Windows.Forms.TabPage();
-            this.add_files = new System.Windows.Forms.Button();
-            this.list_films = new System.Windows.Forms.ListBox();
-            this.poster_img = new System.Windows.Forms.PictureBox();
-            this.film_caption = new System.Windows.Forms.Label();
-            this.film_path = new System.Windows.Forms.Label();
-            this.save_list = new System.Windows.Forms.Button();
-            this.get_film_caption = new System.Windows.Forms.TextBox();
-            this.get_film_poster_url = new System.Windows.Forms.TextBox();
-            this.path_to_poster = new System.Windows.Forms.TextBox();
-            this.get_poster_btn = new System.Windows.Forms.Button();
-            this.apply_new_title = new System.Windows.Forms.Button();
+            this.button1 = new System.Windows.Forms.Button();
+            this.delete_selected = new System.Windows.Forms.Button();
+            this.status_changes = new System.Windows.Forms.Label();
+            this.current_url = new System.Windows.Forms.Label();
+            this.replace_to_server_btn = new System.Windows.Forms.Button();
+            this.get_film_url = new System.Windows.Forms.TextBox();
+            this.goto_stream = new System.Windows.Forms.Button();
+            this.clear_all = new System.Windows.Forms.Button();
+            this.load_list = new System.Windows.Forms.Button();
             this.global_apply = new System.Windows.Forms.Button();
+            this.apply_new_title = new System.Windows.Forms.Button();
+            this.get_poster_btn = new System.Windows.Forms.Button();
+            this.path_to_poster = new System.Windows.Forms.TextBox();
+            this.get_film_poster_url = new System.Windows.Forms.TextBox();
+            this.get_film_caption = new System.Windows.Forms.TextBox();
+            this.save_list = new System.Windows.Forms.Button();
+            this.film_path = new System.Windows.Forms.Label();
+            this.film_caption = new System.Windows.Forms.Label();
+            this.poster_img = new System.Windows.Forms.PictureBox();
             this.poster_img_menu = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.find = new System.Windows.Forms.ToolStripMenuItem();
-            this.load_list = new System.Windows.Forms.Button();
-            this.clear_all = new System.Windows.Forms.Button();
-            this.goto_stream = new System.Windows.Forms.Button();
+            this.find_hd_poster = new System.Windows.Forms.ToolStripMenuItem();
+            this.list_films = new System.Windows.Forms.ListBox();
+            this.add_files = new System.Windows.Forms.Button();
+            this.pl_timer = new System.Windows.Forms.Timer(this.components);
+            this.changes_timer = new System.Windows.Forms.Timer(this.components);
+            this.requester = new System.Windows.Forms.Timer(this.components);
+            this.perm_exit = new System.Windows.Forms.Button();
             this.statusStrip1.SuspendLayout();
             this.table.SuspendLayout();
             this.stream_page.SuspendLayout();
@@ -116,10 +127,11 @@
             // 
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.web_server_status,
-            this.mc_status});
-            this.statusStrip1.Location = new System.Drawing.Point(5, 464);
+            this.mc_status,
+            this.req_state});
+            this.statusStrip1.Location = new System.Drawing.Point(5, 484);
             this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(424, 22);
+            this.statusStrip1.Size = new System.Drawing.Size(524, 22);
             this.statusStrip1.TabIndex = 9;
             this.statusStrip1.Text = "statusStrip1";
             // 
@@ -132,8 +144,14 @@
             // mc_status
             // 
             this.mc_status.Name = "mc_status";
-            this.mc_status.Size = new System.Drawing.Size(142, 17);
-            this.mc_status.Text = "Медиацентр остановлен";
+            this.mc_status.Size = new System.Drawing.Size(93, 17);
+            this.mc_status.Text = "MC остановлен";
+            // 
+            // req_state
+            // 
+            this.req_state.Name = "req_state";
+            this.req_state.Size = new System.Drawing.Size(13, 17);
+            this.req_state.Text = "1";
             // 
             // table
             // 
@@ -144,12 +162,13 @@
             this.table.Location = new System.Drawing.Point(5, 5);
             this.table.Name = "table";
             this.table.SelectedIndex = 0;
-            this.table.Size = new System.Drawing.Size(424, 459);
+            this.table.Size = new System.Drawing.Size(524, 479);
             this.table.TabIndex = 10;
             this.table.SelectedIndexChanged += new System.EventHandler(this.table_SelectedIndexChanged);
             // 
             // stream_page
             // 
+            this.stream_page.Controls.Add(this.perm_exit);
             this.stream_page.Controls.Add(this.progress);
             this.stream_page.Controls.Add(this.marq);
             this.stream_page.Controls.Add(this.label4);
@@ -174,7 +193,7 @@
             this.stream_page.Location = new System.Drawing.Point(4, 22);
             this.stream_page.Name = "stream_page";
             this.stream_page.Padding = new System.Windows.Forms.Padding(3);
-            this.stream_page.Size = new System.Drawing.Size(416, 433);
+            this.stream_page.Size = new System.Drawing.Size(516, 453);
             this.stream_page.TabIndex = 0;
             this.stream_page.Text = "Стрим";
             this.stream_page.UseVisualStyleBackColor = true;
@@ -396,7 +415,7 @@
             this.webserver_page.Location = new System.Drawing.Point(4, 22);
             this.webserver_page.Name = "webserver_page";
             this.webserver_page.Padding = new System.Windows.Forms.Padding(3);
-            this.webserver_page.Size = new System.Drawing.Size(416, 433);
+            this.webserver_page.Size = new System.Drawing.Size(516, 453);
             this.webserver_page.TabIndex = 1;
             this.webserver_page.Text = "Настройки веб-сервера";
             this.webserver_page.UseVisualStyleBackColor = true;
@@ -422,7 +441,7 @@
             this.groupBox1.Location = new System.Drawing.Point(3, 3);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Padding = new System.Windows.Forms.Padding(5);
-            this.groupBox1.Size = new System.Drawing.Size(410, 224);
+            this.groupBox1.Size = new System.Drawing.Size(510, 224);
             this.groupBox1.TabIndex = 8;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Локальный веб-сервер";
@@ -608,12 +627,14 @@
             this.start.UseVisualStyleBackColor = true;
             this.start.Click += new System.EventHandler(this.start_Click);
             // 
-            // pl_timer
-            // 
-            this.pl_timer.Tick += new System.EventHandler(this.pl_timer_Tick);
-            // 
             // mc_page
             // 
+            this.mc_page.Controls.Add(this.button1);
+            this.mc_page.Controls.Add(this.delete_selected);
+            this.mc_page.Controls.Add(this.status_changes);
+            this.mc_page.Controls.Add(this.current_url);
+            this.mc_page.Controls.Add(this.replace_to_server_btn);
+            this.mc_page.Controls.Add(this.get_film_url);
             this.mc_page.Controls.Add(this.goto_stream);
             this.mc_page.Controls.Add(this.clear_all);
             this.mc_page.Controls.Add(this.load_list);
@@ -632,31 +653,192 @@
             this.mc_page.Location = new System.Drawing.Point(4, 22);
             this.mc_page.Name = "mc_page";
             this.mc_page.Padding = new System.Windows.Forms.Padding(3);
-            this.mc_page.Size = new System.Drawing.Size(416, 433);
+            this.mc_page.Size = new System.Drawing.Size(516, 453);
             this.mc_page.TabIndex = 2;
             this.mc_page.Text = "Медиацентр";
             this.mc_page.UseVisualStyleBackColor = true;
             // 
-            // add_files
+            // button1
             // 
-            this.add_files.Location = new System.Drawing.Point(6, 6);
-            this.add_files.Name = "add_files";
-            this.add_files.Size = new System.Drawing.Size(75, 23);
-            this.add_files.TabIndex = 0;
-            this.add_files.Text = "Добавить";
-            this.add_files.UseVisualStyleBackColor = true;
-            this.add_files.Click += new System.EventHandler(this.add_files_Click);
+            this.button1.Location = new System.Drawing.Point(413, 422);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.TabIndex = 19;
+            this.button1.Text = "button1";
+            this.button1.UseVisualStyleBackColor = true;
             // 
-            // list_films
+            // delete_selected
             // 
-            this.list_films.Enabled = false;
-            this.list_films.FormattingEnabled = true;
-            this.list_films.Location = new System.Drawing.Point(6, 35);
-            this.list_films.Name = "list_films";
-            this.list_films.Size = new System.Drawing.Size(404, 147);
-            this.list_films.TabIndex = 1;
-            this.list_films.Click += new System.EventHandler(this.list_films_Click);
-            this.list_films.DoubleClick += new System.EventHandler(this.list_films_DoubleClick);
+            this.delete_selected.Enabled = false;
+            this.delete_selected.Location = new System.Drawing.Point(87, 6);
+            this.delete_selected.Name = "delete_selected";
+            this.delete_selected.Size = new System.Drawing.Size(94, 23);
+            this.delete_selected.TabIndex = 18;
+            this.delete_selected.Text = "Удалить выбранный";
+            this.delete_selected.UseVisualStyleBackColor = true;
+            this.delete_selected.Click += new System.EventHandler(this.delete_selected_Click);
+            // 
+            // status_changes
+            // 
+            this.status_changes.AutoSize = true;
+            this.status_changes.Location = new System.Drawing.Point(182, 421);
+            this.status_changes.Name = "status_changes";
+            this.status_changes.Size = new System.Drawing.Size(35, 13);
+            this.status_changes.TabIndex = 17;
+            this.status_changes.Text = "label7";
+            // 
+            // current_url
+            // 
+            this.current_url.Location = new System.Drawing.Point(182, 219);
+            this.current_url.Name = "current_url";
+            this.current_url.Size = new System.Drawing.Size(328, 41);
+            this.current_url.TabIndex = 16;
+            this.current_url.Text = "...";
+            // 
+            // replace_to_server_btn
+            // 
+            this.replace_to_server_btn.Location = new System.Drawing.Point(405, 341);
+            this.replace_to_server_btn.Name = "replace_to_server_btn";
+            this.replace_to_server_btn.Size = new System.Drawing.Size(75, 23);
+            this.replace_to_server_btn.TabIndex = 15;
+            this.replace_to_server_btn.Text = "replace";
+            this.replace_to_server_btn.UseVisualStyleBackColor = true;
+            this.replace_to_server_btn.Visible = false;
+            this.replace_to_server_btn.Click += new System.EventHandler(this.replace_to_server_btn_Click);
+            // 
+            // get_film_url
+            // 
+            this.get_film_url.Location = new System.Drawing.Point(185, 342);
+            this.get_film_url.Name = "get_film_url";
+            this.get_film_url.ReadOnly = true;
+            this.get_film_url.Size = new System.Drawing.Size(214, 20);
+            this.get_film_url.TabIndex = 14;
+            this.get_film_url.Visible = false;
+            this.get_film_url.Click += new System.EventHandler(this.get_film_caption_Click);
+            // 
+            // goto_stream
+            // 
+            this.goto_stream.Enabled = false;
+            this.goto_stream.Location = new System.Drawing.Point(185, 263);
+            this.goto_stream.Name = "goto_stream";
+            this.goto_stream.Size = new System.Drawing.Size(181, 23);
+            this.goto_stream.TabIndex = 13;
+            this.goto_stream.Text = "Отправить фильм на стрим";
+            this.goto_stream.UseVisualStyleBackColor = true;
+            this.goto_stream.Click += new System.EventHandler(this.goto_stream_Click);
+            // 
+            // clear_all
+            // 
+            this.clear_all.Location = new System.Drawing.Point(420, 6);
+            this.clear_all.Name = "clear_all";
+            this.clear_all.Size = new System.Drawing.Size(90, 23);
+            this.clear_all.TabIndex = 12;
+            this.clear_all.Text = "Очистить";
+            this.clear_all.UseVisualStyleBackColor = true;
+            this.clear_all.Click += new System.EventHandler(this.clear_all_Click);
+            // 
+            // load_list
+            // 
+            this.load_list.Location = new System.Drawing.Point(303, 6);
+            this.load_list.Name = "load_list";
+            this.load_list.Size = new System.Drawing.Size(110, 23);
+            this.load_list.TabIndex = 11;
+            this.load_list.Text = "Загрузить список";
+            this.load_list.UseVisualStyleBackColor = true;
+            this.load_list.Click += new System.EventHandler(this.load_list_Click);
+            // 
+            // global_apply
+            // 
+            this.global_apply.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+            this.global_apply.Location = new System.Drawing.Point(185, 397);
+            this.global_apply.Name = "global_apply";
+            this.global_apply.Size = new System.Drawing.Size(214, 21);
+            this.global_apply.TabIndex = 10;
+            this.global_apply.Text = "Принять изменения";
+            this.global_apply.UseVisualStyleBackColor = true;
+            this.global_apply.Visible = false;
+            this.global_apply.Click += new System.EventHandler(this.global_apply_Click);
+            // 
+            // apply_new_title
+            // 
+            this.apply_new_title.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+            this.apply_new_title.Location = new System.Drawing.Point(453, 292);
+            this.apply_new_title.Name = "apply_new_title";
+            this.apply_new_title.Size = new System.Drawing.Size(27, 21);
+            this.apply_new_title.TabIndex = 10;
+            this.apply_new_title.Text = "ok";
+            this.apply_new_title.UseVisualStyleBackColor = true;
+            this.apply_new_title.Visible = false;
+            this.apply_new_title.Click += new System.EventHandler(this.apply_new_title_Click);
+            // 
+            // get_poster_btn
+            // 
+            this.get_poster_btn.Location = new System.Drawing.Point(405, 369);
+            this.get_poster_btn.Name = "get_poster_btn";
+            this.get_poster_btn.Size = new System.Drawing.Size(75, 23);
+            this.get_poster_btn.TabIndex = 9;
+            this.get_poster_btn.Text = "open";
+            this.get_poster_btn.UseVisualStyleBackColor = true;
+            this.get_poster_btn.Visible = false;
+            this.get_poster_btn.Click += new System.EventHandler(this.get_poster_btn_Click);
+            // 
+            // path_to_poster
+            // 
+            this.path_to_poster.Location = new System.Drawing.Point(185, 371);
+            this.path_to_poster.Name = "path_to_poster";
+            this.path_to_poster.ReadOnly = true;
+            this.path_to_poster.Size = new System.Drawing.Size(214, 20);
+            this.path_to_poster.TabIndex = 8;
+            this.path_to_poster.Visible = false;
+            // 
+            // get_film_poster_url
+            // 
+            this.get_film_poster_url.Location = new System.Drawing.Point(185, 318);
+            this.get_film_poster_url.Name = "get_film_poster_url";
+            this.get_film_poster_url.ReadOnly = true;
+            this.get_film_poster_url.Size = new System.Drawing.Size(295, 20);
+            this.get_film_poster_url.TabIndex = 7;
+            this.get_film_poster_url.Visible = false;
+            this.get_film_poster_url.Click += new System.EventHandler(this.get_film_caption_Click);
+            // 
+            // get_film_caption
+            // 
+            this.get_film_caption.Location = new System.Drawing.Point(185, 292);
+            this.get_film_caption.Name = "get_film_caption";
+            this.get_film_caption.Size = new System.Drawing.Size(262, 20);
+            this.get_film_caption.TabIndex = 6;
+            this.get_film_caption.Visible = false;
+            this.get_film_caption.DoubleClick += new System.EventHandler(this.get_film_caption_Click);
+            this.get_film_caption.KeyDown += new System.Windows.Forms.KeyEventHandler(this.get_film_caption_KeyDown);
+            // 
+            // save_list
+            // 
+            this.save_list.Enabled = false;
+            this.save_list.Location = new System.Drawing.Point(187, 6);
+            this.save_list.Name = "save_list";
+            this.save_list.Size = new System.Drawing.Size(110, 23);
+            this.save_list.TabIndex = 5;
+            this.save_list.Text = "Сохранить список";
+            this.save_list.UseVisualStyleBackColor = true;
+            this.save_list.Click += new System.EventHandler(this.save_list_Click);
+            // 
+            // film_path
+            // 
+            this.film_path.AutoSize = true;
+            this.film_path.Location = new System.Drawing.Point(182, 203);
+            this.film_path.Name = "film_path";
+            this.film_path.Size = new System.Drawing.Size(16, 13);
+            this.film_path.TabIndex = 4;
+            this.film_path.Text = "...";
+            // 
+            // film_caption
+            // 
+            this.film_caption.AutoSize = true;
+            this.film_caption.Location = new System.Drawing.Point(182, 188);
+            this.film_caption.Name = "film_caption";
+            this.film_caption.Size = new System.Drawing.Size(16, 13);
+            this.film_caption.TabIndex = 3;
+            this.film_caption.Text = "...";
             // 
             // poster_img
             // 
@@ -669,144 +851,81 @@
             this.poster_img.TabIndex = 2;
             this.poster_img.TabStop = false;
             // 
-            // film_caption
-            // 
-            this.film_caption.AutoSize = true;
-            this.film_caption.Location = new System.Drawing.Point(182, 188);
-            this.film_caption.Name = "film_caption";
-            this.film_caption.Size = new System.Drawing.Size(16, 13);
-            this.film_caption.TabIndex = 3;
-            this.film_caption.Text = "...";
-            // 
-            // film_path
-            // 
-            this.film_path.AutoSize = true;
-            this.film_path.Location = new System.Drawing.Point(182, 203);
-            this.film_path.Name = "film_path";
-            this.film_path.Size = new System.Drawing.Size(16, 13);
-            this.film_path.TabIndex = 4;
-            this.film_path.Text = "...";
-            // 
-            // save_list
-            // 
-            this.save_list.Enabled = false;
-            this.save_list.Location = new System.Drawing.Point(87, 6);
-            this.save_list.Name = "save_list";
-            this.save_list.Size = new System.Drawing.Size(110, 23);
-            this.save_list.TabIndex = 5;
-            this.save_list.Text = "Сохранить список";
-            this.save_list.UseVisualStyleBackColor = true;
-            this.save_list.Click += new System.EventHandler(this.save_list_Click);
-            // 
-            // get_film_caption
-            // 
-            this.get_film_caption.Location = new System.Drawing.Point(185, 249);
-            this.get_film_caption.Name = "get_film_caption";
-            this.get_film_caption.Size = new System.Drawing.Size(181, 20);
-            this.get_film_caption.TabIndex = 6;
-            this.get_film_caption.Visible = false;
-            // 
-            // get_film_poster_url
-            // 
-            this.get_film_poster_url.Location = new System.Drawing.Point(185, 275);
-            this.get_film_poster_url.Name = "get_film_poster_url";
-            this.get_film_poster_url.Size = new System.Drawing.Size(181, 20);
-            this.get_film_poster_url.TabIndex = 7;
-            this.get_film_poster_url.Visible = false;
-            // 
-            // path_to_poster
-            // 
-            this.path_to_poster.Location = new System.Drawing.Point(185, 301);
-            this.path_to_poster.Name = "path_to_poster";
-            this.path_to_poster.Size = new System.Drawing.Size(100, 20);
-            this.path_to_poster.TabIndex = 8;
-            this.path_to_poster.Visible = false;
-            // 
-            // get_poster_btn
-            // 
-            this.get_poster_btn.Location = new System.Drawing.Point(291, 300);
-            this.get_poster_btn.Name = "get_poster_btn";
-            this.get_poster_btn.Size = new System.Drawing.Size(75, 23);
-            this.get_poster_btn.TabIndex = 9;
-            this.get_poster_btn.Text = "open";
-            this.get_poster_btn.UseVisualStyleBackColor = true;
-            this.get_poster_btn.Visible = false;
-            this.get_poster_btn.Click += new System.EventHandler(this.get_poster_btn_Click);
-            // 
-            // apply_new_title
-            // 
-            this.apply_new_title.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.apply_new_title.Location = new System.Drawing.Point(372, 249);
-            this.apply_new_title.Name = "apply_new_title";
-            this.apply_new_title.Size = new System.Drawing.Size(27, 21);
-            this.apply_new_title.TabIndex = 10;
-            this.apply_new_title.Text = "ok";
-            this.apply_new_title.UseVisualStyleBackColor = true;
-            this.apply_new_title.Visible = false;
-            this.apply_new_title.Click += new System.EventHandler(this.apply_new_title_Click);
-            // 
-            // global_apply
-            // 
-            this.global_apply.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.global_apply.Location = new System.Drawing.Point(185, 327);
-            this.global_apply.Name = "global_apply";
-            this.global_apply.Size = new System.Drawing.Size(181, 21);
-            this.global_apply.TabIndex = 10;
-            this.global_apply.Text = "Принять изменения";
-            this.global_apply.UseVisualStyleBackColor = true;
-            this.global_apply.Visible = false;
-            this.global_apply.Click += new System.EventHandler(this.global_apply_Click);
-            // 
             // poster_img_menu
             // 
             this.poster_img_menu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.find});
+            this.find,
+            this.find_hd_poster});
             this.poster_img_menu.Name = "poster_img_menu";
-            this.poster_img_menu.Size = new System.Drawing.Size(218, 26);
+            this.poster_img_menu.Size = new System.Drawing.Size(283, 48);
             // 
             // find
             // 
             this.find.Name = "find";
-            this.find.Size = new System.Drawing.Size(217, 22);
-            this.find.Text = "Найти постер в интернете";
+            this.find.Size = new System.Drawing.Size(282, 22);
+            this.find.Text = "Найти случайный постер в интернете";
             this.find.Click += new System.EventHandler(this.find_Click);
             // 
-            // load_list
+            // find_hd_poster
             // 
-            this.load_list.Location = new System.Drawing.Point(204, 6);
-            this.load_list.Name = "load_list";
-            this.load_list.Size = new System.Drawing.Size(110, 23);
-            this.load_list.TabIndex = 11;
-            this.load_list.Text = "Загрузить список";
-            this.load_list.UseVisualStyleBackColor = true;
-            this.load_list.Click += new System.EventHandler(this.load_list_Click);
+            this.find_hd_poster.Name = "find_hd_poster";
+            this.find_hd_poster.Size = new System.Drawing.Size(282, 22);
+            this.find_hd_poster.Text = "Поиск постера в ручную в интернете";
+            this.find_hd_poster.Click += new System.EventHandler(this.find_hd_poster_Click);
             // 
-            // clear_all
+            // list_films
             // 
-            this.clear_all.Location = new System.Drawing.Point(320, 6);
-            this.clear_all.Name = "clear_all";
-            this.clear_all.Size = new System.Drawing.Size(90, 23);
-            this.clear_all.TabIndex = 12;
-            this.clear_all.Text = "Очистить";
-            this.clear_all.UseVisualStyleBackColor = true;
-            this.clear_all.Click += new System.EventHandler(this.clear_all_Click);
+            this.list_films.Enabled = false;
+            this.list_films.FormattingEnabled = true;
+            this.list_films.Location = new System.Drawing.Point(6, 35);
+            this.list_films.Name = "list_films";
+            this.list_films.Size = new System.Drawing.Size(504, 147);
+            this.list_films.TabIndex = 1;
+            this.list_films.Click += new System.EventHandler(this.list_films_Click);
+            this.list_films.DoubleClick += new System.EventHandler(this.list_films_DoubleClick);
             // 
-            // goto_stream
+            // add_files
             // 
-            this.goto_stream.Enabled = false;
-            this.goto_stream.Location = new System.Drawing.Point(185, 220);
-            this.goto_stream.Name = "goto_stream";
-            this.goto_stream.Size = new System.Drawing.Size(181, 23);
-            this.goto_stream.TabIndex = 13;
-            this.goto_stream.Text = "Отправить фильм на стрим";
-            this.goto_stream.UseVisualStyleBackColor = true;
-            this.goto_stream.Click += new System.EventHandler(this.goto_stream_Click);
+            this.add_files.Location = new System.Drawing.Point(6, 6);
+            this.add_files.Name = "add_files";
+            this.add_files.Size = new System.Drawing.Size(75, 23);
+            this.add_files.TabIndex = 0;
+            this.add_files.Text = "Добавить";
+            this.add_files.UseVisualStyleBackColor = true;
+            this.add_files.Click += new System.EventHandler(this.add_files_Click);
+            // 
+            // pl_timer
+            // 
+            this.pl_timer.Tick += new System.EventHandler(this.pl_timer_Tick);
+            // 
+            // changes_timer
+            // 
+            this.changes_timer.Enabled = true;
+            this.changes_timer.Tick += new System.EventHandler(this.changes_timer_Tick);
+            // 
+            // requester
+            // 
+            this.requester.Enabled = true;
+            this.requester.Interval = 3000;
+            this.requester.Tick += new System.EventHandler(this.requester_Tick);
+            // 
+            // perm_exit
+            // 
+            this.perm_exit.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.perm_exit.Font = new System.Drawing.Font("Microsoft Sans Serif", 6F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+            this.perm_exit.Location = new System.Drawing.Point(336, 2);
+            this.perm_exit.Name = "perm_exit";
+            this.perm_exit.Size = new System.Drawing.Size(18, 18);
+            this.perm_exit.TabIndex = 44;
+            this.perm_exit.Text = "x";
+            this.perm_exit.UseVisualStyleBackColor = true;
+            this.perm_exit.Click += new System.EventHandler(this.perm_exit_Click);
             // 
             // mainform
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(434, 491);
+            this.ClientSize = new System.Drawing.Size(534, 511);
             this.Controls.Add(this.table);
             this.Controls.Add(this.statusStrip1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -906,6 +1025,17 @@
         private System.Windows.Forms.Button load_list;
         private System.Windows.Forms.Button clear_all;
         private System.Windows.Forms.Button goto_stream;
+        private System.Windows.Forms.TextBox get_film_url;
+        private System.Windows.Forms.Button replace_to_server_btn;
+        private System.Windows.Forms.Label current_url;
+        private System.Windows.Forms.Label status_changes;
+        private System.Windows.Forms.Timer changes_timer;
+        private System.Windows.Forms.Button delete_selected;
+        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Timer requester;
+        private System.Windows.Forms.ToolStripStatusLabel req_state;
+        private System.Windows.Forms.ToolStripMenuItem find_hd_poster;
+        private System.Windows.Forms.Button perm_exit;
     }
 }
 

@@ -7,12 +7,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Vlc.DotNet.Core;
 using Application = System.Windows.Forms.Application;
+using LocalServer;
 
 namespace HomeServer
 {
@@ -20,7 +22,7 @@ namespace HomeServer
     {
         #region Переменные сервера
         //
-        HomeServer server;
+        WebServer server;
         public IPAddress ipAddress;
         public int port;
         public int max_connection;
@@ -59,13 +61,20 @@ namespace HomeServer
         public List<string> film_list { get; set; }
         public List<Movie> movies { get; set; }
         public int film_index_selected { get; set; }
+        public KinoPage current_kino_page { get; set; }
+
+        public string[] rus_word = { "а", "б", "в", "г", "д", "е", "ё", "ж", "з", "и", "й",
+          "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ц",
+          "ч", "ш", "щ", "ъ", "ы", "ь", "э", "ю", "я", "1","2","3","4","5","6","7","8","9","0" };
+
+        public Task awaiter;
         #endregion
         public mainform()
-        {            
+        {
             InitializeComponent();
             #region Параметры сервера
             //
-            server = new HomeServer();
+            server = new WebServer();
             address = new byte[4];
             address[0] = (byte)ip1.Value;
             address[1] = (byte)ip2.Value;
@@ -99,7 +108,7 @@ namespace HomeServer
             #endregion
         }
 
-        private void mainform_Load(object sender, EventArgs e)
+        private async void mainform_Load(object sender, EventArgs e)
         {
             #region Настройки сервера
             autostart = Properties.Settings.Default.server_autostart;
@@ -128,6 +137,24 @@ namespace HomeServer
             open_file.Focus();
             Width = 390;
             Height = 310;
+
+            awaiter = Task.Run(() =>
+           {
+               while (server.running)
+               {
+                   if (server.ready)
+                   {
+                       Invoke(new Action(() => { this.Show(); }));
+                       if (status == Status.Play)
+                       {
+                           Stop_Media_Center();
+                           Reset_Media_Center();
+                       }
+                       requester.Enabled = true;
+                   }
+               }
+           });
+            await Task.WhenAll(awaiter);
         }
 
         #region Веб-сервер
@@ -273,64 +300,111 @@ namespace HomeServer
                 time.Text = "00:00:00";
                 elapsed.Text = "00:00:00";
                 goto_stream.Enabled = true;
+                requester.Enabled = true;
             }));
         }
 
         private void Media_Playing(object sender, VlcMediaPlayerPlayingEventArgs e)
         {
             status = Status.Play;
-            Invoke(new Action(() => { goto_stream.Enabled = false; }));
+            Invoke(new Action(() => { goto_stream.Enabled = false; requester.Enabled = false; this.Hide(); }));
         }
 
         private void Media_Opening(object sender, VlcMediaPlayerOpeningEventArgs e)
         {
             status = Status.Starting;
         }
+        private void perm_exit_Click(object sender, EventArgs e)
+        {
+            Process.GetCurrentProcess().Kill();
+
+        }
         #endregion
 
         #region Медиа центр
         private void mainform_FormClosing(object sender, FormClosingEventArgs e)
         {
-            //if (e.CloseReason == CloseReason.UserClosing)
-            //{
-            //    e.Cancel = false;
-            //    //  server.stop();
-            //   // Hide();
-            //}
-            Process.GetCurrentProcess().Kill();
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                //  server.stop();
+                Hide();
+            }
+            // Process.GetCurrentProcess().Kill();
         }
 
         private void open_file_Click(object sender, EventArgs e)
         {
-            using (OpenFileDialog op = new OpenFileDialog())
+            if (status == Status.Play)
             {
-                op.Filter = "MKV *.mkv Mp4 *.mp4 AVI *.avi|*.mkv;*.mp4;*.avi";
-                //op.Multiselect = true;
-                if (op.ShowDialog() == DialogResult.OK)
+                var result = MessageBox.Show(this, "Остановить текущую трансляцию?", "Media Center", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+                if (result == DialogResult.OK)
                 {
-                    file = op.FileName;
-                    file_cap.Text = $"Filename: {Path.GetFileName(op.FileName)}";
-                    status = Status.Ready;
-                    VideoSize(file);
-                    GetQuality(file);
-                    // GetPoster(file);
-                    quality.Enabled = true;
-                    start_mc.Enabled = true;
-                    reset.Enabled = true;
+                    //player.Stop();
+                    stop_mc.PerformClick();
+                    reset.PerformClick();
+                    using (OpenFileDialog op = new OpenFileDialog())
+                    {
+                        op.Filter = "MKV *.mkv Mp4 *.mp4 AVI *.avi|*.mkv;*.mp4;*.avi";
+                        //op.Multiselect = true;
+                        if (op.ShowDialog() == DialogResult.OK)
+                        {
+                            file = op.FileName;
+                            file_cap.Text = $"Открыто локально из:\r{Path.GetFileName(op.FileName)}";
+                            status = Status.Ready;
+                            VideoSize(file);
+                            GetQuality(file);
+                            // GetPoster(file);
+                            quality.Enabled = true;
+                            start_mc.Enabled = true;
+                            reset.Enabled = true;
+                        }
+                    }
+                }
+                else
+                {
+
+                }
+            }
+            else
+            {
+                using (OpenFileDialog op = new OpenFileDialog())
+                {
+                    op.Filter = "MKV *.mkv Mp4 *.mp4 AVI *.avi|*.mkv;*.mp4;*.avi";
+                    //op.Multiselect = true;
+                    if (op.ShowDialog() == DialogResult.OK)
+                    {
+                        file = op.FileName;
+                        file_cap.Text = $"Открыто локально из:\r{Path.GetFileName(op.FileName)}";
+                        status = Status.Ready;
+                        VideoSize(file);
+                        GetQuality(file);
+                        // GetPoster(file);
+                        quality.Enabled = true;
+                        start_mc.Enabled = true;
+                        reset.Enabled = true;
+                    }
                 }
             }
         }
 
         public void start_mc_Click(object sender, EventArgs e)
         {
+            Start_Media_Center(file);
+        }
+
+        private void Start_Media_Center(string kino)
+        {
             if (quality.SelectedIndex > -1 & brate.SelectedIndex > -1)
             {
                 pl_timer.Start();
                 int index = quality.SelectedIndex;
                 quality_list[index].Url = address_mediacenter.Text;
-                Initialize_server(player, file, quality_list[index].param);
+                Initialize_server(player, kino, quality_list[index].param);
                 stop_mc.Enabled = true;
+                start_mc.Enabled = false;
                 marq.Text = "[ >>> ]";
+
             }
             else
             {
@@ -340,36 +414,53 @@ namespace HomeServer
 
         private void stop_mc_Click(object sender, EventArgs e)
         {
-            player.Stop();
-            pl_timer.Stop();
-            mc_status.Text = "Медиацентр остановлен";
-            stop_mc.Enabled = false;
-            marq.Text = "[ | | | ]";
-            progress.Value = 0;
+            Stop_Media_Center();
+        }
+
+        private void Stop_Media_Center()
+        {
+            Invoke(new Action(() =>
+            {
+                player.Stop();
+                pl_timer.Stop();
+                mc_status.Text = "MC остановлен";
+                stop_mc.Enabled = false;
+                start_mc.Enabled = true;
+                marq.Text = "[ | | | ]";
+                progress.Value = 0;
+            }));
         }
 
         private void reset_Click(object sender, EventArgs e)
         {
-            player.Stop();
-            pl_timer.Stop();
-            bitrate.Clear();
-            quality_list.Clear();
-            quality.Items.Clear();
-            brate.Items.Clear();
-            player.ResetMedia();
-            start_mc.Enabled = false;
-            quality.Enabled = false;
-            brate.Enabled = false;
-            stop_mc.Enabled = false;
-            file = null;
-            file_cap.Text = "Filename: ";
-            init_height.Text = "Stream height: ";
-            init_width.Text = "Stream width: ";
-            width_cap.Text = "Original width: ";
-            height_cap.Text = "Origibal height: ";
-            vcodec_cap.Text = "Video Codec: ";
-            acodec_cap.Text = "Audio Codec: ";
-            progress.Value = 0;
+            Reset_Media_Center();
+        }
+
+        private void Reset_Media_Center()
+        {
+            Invoke(new Action(() =>
+            {
+                player.Stop();
+                pl_timer.Stop();
+                bitrate.Clear();
+                quality_list.Clear();
+                quality.Items.Clear();
+                brate.Items.Clear();
+                player.ResetMedia();
+                start_mc.Enabled = false;
+                quality.Enabled = false;
+                brate.Enabled = false;
+                stop_mc.Enabled = false;
+                file = null;
+                file_cap.Text = "Filename: ";
+                init_height.Text = "Stream height: ";
+                init_width.Text = "Stream width: ";
+                width_cap.Text = "Original width: ";
+                height_cap.Text = "Origibal height: ";
+                vcodec_cap.Text = "Video Codec: ";
+                acodec_cap.Text = "Audio Codec: ";
+                progress.Value = 0;
+            }));
         }
 
         public void Initialize_server(VlcMediaPlayer player, string filepath, string[] param)
@@ -461,7 +552,7 @@ namespace HomeServer
         {
             Invoke(new Action(() =>
             {
-                mc_status.Text = $"Медиацентр запущен - {quality_list[quality.SelectedIndex].Name} - {status}";
+                mc_status.Text = $"MC запущен - {quality_list[quality.SelectedIndex].Name} - {status}";
             }));
         }
 
@@ -537,7 +628,13 @@ namespace HomeServer
             WebClient client = new WebClient();
             client.DownloadFile(poster_url, content_path + @"/poster/poster.jpg");
         }
+        private void find_hd_poster_Click(object sender, EventArgs e)
+        {
+            var url = items[film_index_selected].title;
+            var address = $"https://yandex.ru/images/search?text={url} poster";
 
+            Process.Start(address);
+        }
         public async Task<string> GetFilmUrl(string film)
         {
             try
@@ -558,7 +655,6 @@ namespace HomeServer
             catch { }
             return wanted_film_url;
         }
-
         public async Task<string> GetPic(string url)
         {
             try
@@ -577,10 +673,15 @@ namespace HomeServer
                 if (url != null)
                     poster_url = "https:" + link;
             }
-            catch { MessageBox.Show("error"); }
+            catch
+            {
+                MessageBox.Show(this, "Много запросов, попробуйте позднее или загрузить в ручную", "Media Center", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                path_to_poster.Visible = true;
+                get_poster_btn.Visible = true;
+                global_apply.Visible = true;
+            }
             return poster_url;
         }
-
         #endregion
 
         #region Управление плейлистом медиацентра
@@ -593,11 +694,10 @@ namespace HomeServer
             }
             else
             {
-                Width = 450;
-                Height = 530;
+                Width = 550;
+                Height = 550;
             }
         }
-
         private void add_files_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog op = new OpenFileDialog())
@@ -608,8 +708,8 @@ namespace HomeServer
                 if (op.ShowDialog() == DialogResult.OK)
                 {
                     var files = op.FileNames;
-                    var default_url = @"http://192.168.0.103/watch.html";
-                    int i = movies.Count;
+                    var default_url = @"";
+                    int i = movies.Count + 1;
                     foreach (var f in files)
                     {
                         film_list.Add(Path.GetFileNameWithoutExtension(f));
@@ -627,15 +727,16 @@ namespace HomeServer
                 SaveFilms();
             }
         }
-
         private void SaveFilms()
         {
             var p = content_path + @"/add.html";
             File.Delete(p);
             items.Clear();
+            int i = items.Count;
             foreach (var item in movies)
             {
-                items.Add(new Item(item.Url, item.Poster, item.Title, item.Path));
+                items.Add(new Item(i, item.Url, item.Poster, item.Title, item.Path));
+                i++;
             }
 
             foreach (var item in items)
@@ -649,32 +750,36 @@ namespace HomeServer
                 list_films.Items.Add(item.Title);
             }
         }
-
-        public string Serialize()
+        public void Serialize()
         {
-            Directory.CreateDirectory(AppContext.BaseDirectory + @"/list/");
-            var playlist = AppContext.BaseDirectory + @"/list/default.json";
-            var file = JsonConvert.SerializeObject(movies, Formatting.Indented);
-            File.WriteAllText(playlist, file);
-
-            return file.ToString();
+            Directory.CreateDirectory(AppContext.BaseDirectory + @"list/");
+            //var playlist = AppContext.BaseDirectory + @"/list/default.json";
+            if (content_path != "")
+            {
+                var path = content_path + @"data.json";
+                var file = JsonConvert.SerializeObject(movies, Formatting.Indented);
+                File.WriteAllText(path, file);
+            }
         }
-
-        public void Deserialize()
+        public List<Movie> Deserialize()
         {
-            var file = File.ReadAllText(AppContext.BaseDirectory + @"/list/default.json");
-            movies = JsonConvert.DeserializeObject<List<Movie>>(file);
+            if (content_path != "")
+            {
+                var path = content_path + @"data.json";
+                //var file = File.ReadAllText(AppContext.BaseDirectory + @"/list/default.json");
+                var file = File.ReadAllText(path);
+                movies = JsonConvert.DeserializeObject<List<Movie>>(file);
+            }
+            return movies;
         }
-
         private void save_list_Click(object sender, EventArgs e)
         {
             //тут будет сериализация списка фильмов
             Serialize();
         }
-
         private void list_films_DoubleClick(object sender, EventArgs e)
         {
-            if (list_films.SelectedItems.Count >= 0)
+            if (list_films.SelectedItems.Count > 0)
             {
                 var index = list_films.Items.IndexOf(list_films.SelectedItems[0]);
                 film_index_selected = index;
@@ -683,20 +788,24 @@ namespace HomeServer
                 get_film_caption.Text = items[index].title;
                 get_film_poster_url.Text = items[index].img_url;
                 poster_img.ImageLocation = items[index].img_url;
+                get_film_url.Text = items[index].http_url;
                 get_film_caption.Visible = true;
                 get_film_poster_url.Visible = true;
                 path_to_poster.Visible = true;
                 get_poster_btn.Visible = true;
                 apply_new_title.Visible = true;
                 global_apply.Visible = true;
+                get_film_url.Visible = true;
+                replace_to_server_btn.Visible = true;
             }
         }
-
         private void list_films_Click(object sender, EventArgs e)
         {
-            if (list_films.SelectedIndices.Count >= 0)
+            if (list_films.SelectedItems.Count > 0)
             {
-                var index = list_films.Items.IndexOf(list_films.SelectedItems[0]);
+                delete_selected.Enabled = true;
+                //var index = list_films.Items.IndexOf(list_films.SelectedItems[0]);
+                var index = list_films.SelectedIndex;
                 film_index_selected = index;
                 var film = items[index].path;
                 film_caption.Text = items[index].title;
@@ -704,11 +813,13 @@ namespace HomeServer
                 get_film_poster_url.Text = items[index].img_url;
                 poster_img.ImageLocation = items[index].img_url;
                 film_path.Text = items[index].path;
-                if(status != Status.Play)
+                get_film_url.Text = items[index].http_url;
+                current_url.Text = items[index].http_url;
                 goto_stream.Enabled = true;
+
+
             }
         }
-
         private void apply_new_title_Click(object sender, EventArgs e)
         {
             var new_title = get_film_caption.Text;
@@ -718,9 +829,11 @@ namespace HomeServer
             var p = content_path + @"/add.html";
             File.Delete(p);
             items.Clear();
+            int i = items.Count;
             foreach (var item in movies)
             {
-                items.Add(new Item(item.Url, item.Poster, item.Title, item.Path));
+                items.Add(new Item(i, item.Url, item.Poster, item.Title, item.Path));
+                i++;
             }
             foreach (var item in items)
             {
@@ -731,13 +844,13 @@ namespace HomeServer
             {
                 list_films.Items.Add(item.Title);
             }
+            status_changes.Text = "Изменения приняты";
         }
-
         private void get_poster_btn_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog open_dlg = new OpenFileDialog())
             {
-                open_dlg.Filter = "JPEG file *.jpg|*.jpg|PNG file *.png|*.png";
+                open_dlg.Filter = "All pictures files *.jpg, *.jpeg, *.png|*.jpg;*.jpeg;*.png|JPEG file *.jpg|*.jpg|PNG file *.png|*.png|JPEG file *.jpeg|*.jpeg";
                 open_dlg.Title = "Выбор нового постера для фильма";
                 if (open_dlg.ShowDialog() == DialogResult.OK)
                 {
@@ -753,9 +866,11 @@ namespace HomeServer
             var p = content_path + @"/add.html";
             File.Delete(p);
             items.Clear();
+            int i = items.Count;
             foreach (var item in movies)
             {
-                items.Add(new Item(item.Url, item.Poster, item.Title, item.Path));
+                items.Add(new Item(i, item.Url, item.Poster, item.Title, item.Path));
+                i++;
             }
             foreach (var item in items)
             {
@@ -766,8 +881,8 @@ namespace HomeServer
             {
                 list_films.Items.Add(item.Title);
             }
+            status_changes.Text = "Изменения приняты";
         }
-
         private async void find_Click(object sender, EventArgs e)
         {
             var film_name = movies[film_index_selected].Title;
@@ -787,9 +902,11 @@ namespace HomeServer
                 var p = content_path + @"/add.html";
                 File.Delete(p);
                 items.Clear();
+                int i = items.Count;
                 foreach (var item in movies)
                 {
-                    items.Add(new Item(item.Url, item.Poster, item.Title, item.Path));
+                    items.Add(new Item(i, item.Url, item.Poster, item.Title, item.Path));
+                    i++;
                 }
                 foreach (var item in items)
                 {
@@ -801,8 +918,8 @@ namespace HomeServer
                     list_films.Items.Add(item.Title);
                 }
             }
+            status_changes.Text = "Изменения приняты";
         }
-
         private void global_apply_Click(object sender, EventArgs e)
         {
             get_film_caption.Visible = false;
@@ -811,8 +928,9 @@ namespace HomeServer
             apply_new_title.Visible = false;
             path_to_poster.Visible = false;
             global_apply.Visible = false;
+            get_film_url.Visible = false;
+            replace_to_server_btn.Visible = false;
         }
-
         private void load_list_Click(object sender, EventArgs e)
         {
             Deserialize();
@@ -820,35 +938,278 @@ namespace HomeServer
             SaveFilms();
             save_list.Enabled = true;
         }
-
         private void clear_all_Click(object sender, EventArgs e)
         {
             list_films.Items.Clear();
             film_list.Clear();
             items.Clear();
             movies.Clear();
-            list_films.Enabled=false;
+            list_films.Enabled = false;
             film_caption.Text = "...";
             film_path.Text = "...";
+            current_url.Text = "...";
             poster_img.Image = null;
             goto_stream.Enabled = false;
-            save_list.Enabled=false;
+            save_list.Enabled = false;
+            delete_selected.Enabled = false;
         }
-
         private void goto_stream_Click(object sender, EventArgs e)
         {
-            var film_p = items[film_index_selected].path;
-            file = film_p;
+            if (status == Status.Play)
+            {
+                var result = MessageBox.Show(this, "Остановить текущую трансляцию?", "Media Center", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+                if (result == DialogResult.OK)
+                {
+                    Stop_Media_Center();
+                    Reset_Media_Center();
+
+                    var film_p = items[film_index_selected].path;
+                    file = film_p;
+                    //table.SelectedTab = table.TabPages[0];
+                    status = Status.Ready;
+                    file_cap.Text = $"Открыто из медиацентра:\r{String.Format(movies[film_index_selected].Title, "Underline")}";
+                    VideoSize(file);
+                    GetQuality(file);
+                    quality.Enabled = true;
+                    start_mc.Enabled = true;
+                    reset.Enabled = true;
+                    quality.SelectedIndex = 1;
+                    brate.SelectedIndex = 1;
+                    Start_Media_Center(file);
+                }
+                else
+                {
+
+                }
+            }
+            else
+            {
+                var film_p = items[film_index_selected].path;
+                file = film_p;
+                //table.SelectedTab = table.TabPages[0];
+                status = Status.Ready;
+                file_cap.Text = $"Открыто из медиацентра:\r{String.Format(movies[film_index_selected].Title, "Underline")}";
+                VideoSize(file);
+                GetQuality(file);
+                quality.Enabled = true;
+                start_mc.Enabled = true;
+                reset.Enabled = true;
+                quality.SelectedIndex = 1;
+                brate.SelectedIndex = 1;
+                Start_Media_Center(file);
+            }
+        }
+        private void get_film_caption_Click(object sender, EventArgs e)
+        {
+            var tb = sender as TextBox;
+            tb.SelectAll();
+        }
+        private string Translit(string s)
+        {
+            StringBuilder ret = new StringBuilder();
+            string[] rus = { "а", "б", "в", "г", "д", "е", "ё", "ж", "з", "и", "й",
+          "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ц",
+          "ч", "ш", "щ", "ъ", "ы", "ь", "э", "ю", "я", " ", "1","2","3","4","5","6","7","8","9","0","-" };
+            string[] eng = { "a", "b", "v", "g", "d", "e", "e", "zh", "z", "i", "y",
+          "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "kh", "ts",
+          "ch", "sh", "shch", null, "y", null, "e", "yu", "ya", "_", "1","2","3","4","5","6","7","8","9","0","-" };
+            s = s.ToLower();
+            for (int j = 0; j < s.Length; j++)
+                for (int i = 0; i < rus.Length; i++)
+                    if (s.Substring(j, 1) == rus[i]) ret.Append(eng[i]);
+            return ret.ToString();
+        }
+        private void replace_to_server_btn_Click(object sender, EventArgs e)
+        {
+            if (File.Exists($"{items[film_index_selected].http_url}"))
+            {
+                MessageBox.Show(this, "Ссылка на фильм уже перемещена на сервер", "Media Center", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            }
+            else
+            {
+                //обнуляем
+                current_kino_page = null;
+                //создаем новую страницу трансляции фильма
+                current_kino_page = new KinoPage
+                (
+                    _title: items[film_index_selected].title,
+                    _url: items[film_index_selected].img_url,
+                    _source: items[film_index_selected].path
+                );
+
+                current_kino_page.CreateKinoPage();
+                var s = current_kino_page.Code;
+                var dir = Directory.CreateDirectory(AppContext.BaseDirectory + @"/pages/");
+                var film_title = movies[film_index_selected].Title;
+                string eng_title = null;
+
+                if (film_title.Any(wordByte => wordByte > 127))
+                {
+                    eng_title = Translit(film_title.Replace('.', '_').Replace(' ', '-'));
+                }
+                else
+                {
+                    eng_title = film_title.Replace('.', '_').Replace(' ', '_');
+                }
+
+                var page_name = AppContext.BaseDirectory + $@"/pages/{eng_title}_watch.html";
+                if (File.Exists(page_name))
+                {
+                    File.Delete(page_name);
+                }
+                File.AppendAllLines(page_name, s, Encoding.UTF8);
+
+                Directory.CreateDirectory(content_path + @"/pages/");
+                var destination_path = content_path + @"/pages/" + $@"{eng_title}_watch.html";
+                File.Copy(page_name, destination_path, true);
+                var new_url = $"http://192.168.0.103/pages/{eng_title}_watch.html";
+
+                movies[film_index_selected].Url = new_url;
+                items[film_index_selected].http_url = new_url;
+
+                //
+                var p = content_path + @"/add.html";
+                File.Delete(p);
+                items.Clear();
+                int i = items.Count;
+                foreach (var item in movies)
+                {
+                    items.Add(new Item(i, item.Url, item.Poster, item.Title, item.Path));
+                    i++;
+                }
+                foreach (var item in items)
+                {
+                    File.AppendAllLines(p, item.content);
+                }
+                list_films.Items.Clear();
+                foreach (var item in movies)
+                {
+                    list_films.Items.Add(item.Title);
+                }
+                //
+                status_changes.Text = "Изменения приняты";
+            }
+        }
+        private void get_film_caption_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                var new_title = get_film_caption.Text;
+                movies[film_index_selected].Title = new_title;
+                items[film_index_selected].title = new_title;
+
+                var p = content_path + @"/add.html";
+                File.Delete(p);
+                items.Clear();
+                int i = items.Count;
+                foreach (var item in movies)
+                {
+                    items.Add(new Item(i, item.Url, item.Poster, item.Title, item.Path));
+                    i++;
+                }
+                foreach (var item in items)
+                {
+                    File.AppendAllLines(p, item.content);
+                }
+                list_films.Items.Clear();
+                foreach (var item in movies)
+                {
+                    list_films.Items.Add(item.Title);
+                }
+                status_changes.Text = "Изменения приняты";
+            }
+        }
+        private void changes_timer_Tick(object sender, EventArgs e)
+        {
+            status_changes.Text = "";
+        }
+        
+        private void delete_selected_Click(object sender, EventArgs e)
+        {
+            var item_s = items[film_index_selected];
+            items.RemoveAt(film_index_selected);
+            movies.RemoveAt(film_index_selected);
+
+            var p = content_path + @"/add.html";
+            File.Delete(p);
+            items.Clear();
+            int i = items.Count;
+            foreach (var item in movies)
+            {
+                items.Add(new Item(i, item.Url, item.Poster, item.Title, item.Path));
+                i++;
+            }
+            foreach (var item in items)
+            {
+                File.AppendAllLines(p, item.content);
+            }
+            list_films.Items.Clear();
+            foreach (var item in movies)
+            {
+                list_films.Items.Add(item.Title);
+            }
+            status_changes.Text = "Изменения приняты";
+        }
+        #endregion
+
+
+        private void requester_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                if(server.requestCommand != "")
+                file = GetFilmPath(server.requestCommand);
+                if (status == Status.Play)
+                {
+                    Stop_Media_Center();
+                    Reset_Media_Center();
+                    StartRemoteVideo(GetFilmPath(server.requestCommand));
+                }
+                else
+                {
+                    StartRemoteVideo(file);
+                }
+            }
+            catch { }
+        }
+        public void StartRemoteVideo(string command)
+        {
+            //var ind = items.Find((s) => s.http_url.Contains(command));
+            //var item = movies.Find((a) => a.Url.Contains(command));
+            //var film_p = item.Path;
+            Show();
+            string kinofile = command;
             table.SelectedTab = table.TabPages[0];
             status = Status.Ready;
-            file_cap.Text = $"Filename: {Path.GetFileName(file)}";
-            VideoSize(file);
-            GetQuality(file);            
-            quality.Enabled = true;
-            start_mc.Enabled = true;
-            reset.Enabled = true;
+            if (server.requestCommand != "")
+            {
+                string title = GetFilmTitle(server.requestCommand);
+                file_cap.Text = $"Открыто из Samsung TV:\r{title}";
+                //VideoSize(file);
+                GetQuality(file);
+                quality.Enabled = true;
+                start_mc.Enabled = true;
+                reset.Enabled = true;
+                quality.SelectedIndex = 1;
+                brate.SelectedIndex = 1;
+                Start_Media_Center(kinofile);
+            }
         }
 
-        #endregion
+        public string GetFilmPath(string command)
+        {
+            var item = movies.Find((b) => b.Url.Contains(command));
+            string film_p = item.Path;
+            return film_p;
+        }
+
+        public string GetFilmTitle(string command)
+        {
+            var item = movies.Find((b) => b.Url.Contains(command));
+            string film_p = item.Title;
+            return film_p;
+        }
+
+        
     }
 }
